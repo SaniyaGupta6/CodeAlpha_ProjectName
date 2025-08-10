@@ -2,10 +2,8 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# 1) Path to your CSV data file
-DATA_PATH = r"D:\codeaplha1\books_dataset.csv"  # adjust if needed
+DATA_PATH = r"D:\codeaplha1\books_dataset.csv"
 
-# 2) Load data
 try:
     df = pd.read_csv(DATA_PATH)
     print("Data loaded successfully!")
@@ -14,17 +12,12 @@ except FileNotFoundError:
     print("File not found. Please check the path and try again.")
     raise
 
-# 3) Normalize/clean data
-# Rename to short aliases for plotting
 df_renamed = df.rename(columns={'Title': 'T', 'Price': 'P', 'Availability': 'A'})
 
-# Clean Price column: remove Rs. prefix and convert to float
-# Supports formats like "Rs.42.96" or "Rs 42.96" or "42.96"
 def to_float_price(s):
     if pd.isna(s):
         return None
     s = str(s).strip()
-    # remove Rs., Rs and any currency text
     s = (s.replace('Rs.', '').replace('Rs ', '').replace('Rs', '')
              .replace(',', '').strip())
     try:
@@ -33,11 +26,8 @@ def to_float_price(s):
         return None
 
 df_renamed['P'] = df_renamed['P'].apply(to_float_price)
-
-# Optional: drop rows where price could not be parsed
 df_renamed = df_renamed.dropna(subset=['P'])
 
-# 4) Plotting helpers
 sns.set(style="whitegrid")
 
 def plot_bar():
@@ -51,7 +41,6 @@ def plot_bar():
     plt.show()
 
 def plot_line():
-    # Simple line plot over index (since no explicit time column)
     plt.figure(figsize=(10,6))
     plt.plot(df_renamed.index, df_renamed['P'], marker='o')
     plt.title('Line Plot: Price over Index')
@@ -70,8 +59,6 @@ def plot_hist():
     plt.show()
 
 def plot_scatter():
-    # Encode Availability to numeric for scatter if needed
-    # Simple mapping: In stock -> 1, Out of stock -> 0 (or as per your data)
     avail_unique = df_renamed['A'].unique()
     mapping = {val: i for i, val in enumerate(avail_unique)}
     df_scatter = df_renamed.copy()
@@ -86,7 +73,6 @@ def plot_scatter():
     plt.tight_layout()
     plt.show()
 
-# 5) Run plots (uncomment as needed)
 plot_bar()
 plot_line()
 plot_hist()
