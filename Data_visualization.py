@@ -3,7 +3,7 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 
 # Load dataset
-path = input("Enter the path to your CSV data file (e.g., 'your_data.csv'): ").strip()
+path = input("Enter the path to your CSV data file (e.g., 'your_data.csv'): ")
 df = pd.read_csv(path)
 
 print("Data loaded successfully!")
