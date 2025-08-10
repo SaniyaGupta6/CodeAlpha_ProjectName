@@ -1,107 +1,95 @@
 import pandas as pd
-import seaborn as sns
 import matplotlib.pyplot as plt
+import seaborn as sns
 
-# Load dataset
-path = input("Enter the path to your CSV data file (e.g., 'your_data.csv'): ")
-df = pd.read_csv(path)
+# 1) Path to your CSV data file
+DATA_PATH = r"D:\codeaplha1\books_dataset.csv"  # adjust if needed
 
-print("Data loaded successfully!")
-print("Available columns:", df.columns.tolist())
+# 2) Load data
+try:
+    df = pd.read_csv(DATA_PATH)
+    print("Data loaded successfully!")
+    print("Available columns:", df.columns.tolist())
+except FileNotFoundError:
+    print("File not found. Please check the path and try again.")
+    raise
 
-def choose_column(prompt, valid_columns, allow_empty=False):
-    while True:
-        val = input(prompt).strip()
-        if allow_empty and val == "":
-            return None
-        # If user enters a number, map to position
-        if val.isdigit():
-            idx = int(val) - 1
-            if 0 <= idx < len(valid_columns):
-                return valid_columns[idx]
-            else:
-                print("Index out of range. Try again.")
-                continue
-        # Otherwise, treat as column name
-        if val in valid_columns:
-            return val
-        else:
-            print("Column not found. Available columns:", valid_columns)
+# 3) Normalize/clean data
+# Rename to short aliases for plotting
+df_renamed = df.rename(columns={'Title': 'T', 'Price': 'P', 'Availability': 'A'})
 
-cols = df.columns.tolist()
+# Clean Price column: remove Rs. prefix and convert to float
+# Supports formats like "Rs.42.96" or "Rs 42.96" or "42.96"
+def to_float_price(s):
+    if pd.isna(s):
+        return None
+    s = str(s).strip()
+    # remove Rs., Rs and any currency text
+    s = (s.replace('Rs.', '').replace('Rs ', '').replace('Rs', '')
+             .replace(',', '').strip())
+    try:
+        return float(s)
+    except ValueError:
+        return None
 
-# 1) categorical column for bar plot
-cat_col = choose_column("Enter the categorical column for bar plot (or leave blank to skip): ", cols, allow_empty=True)
-# 2) numeric column for bar plot
-num_col = choose_column("Enter the numeric column for bar plot: ", cols)
-# 3) time-related column for line plot (optional)
-time_col = choose_column("Enter the time-related column for line plot (or leave blank to skip): ", cols, allow_empty=True)
-line_y_col = None
-if time_col:
-    line_y_col = choose_column("Enter the measurement column for line plot: ", cols)
+df_renamed['P'] = df_renamed['P'].apply(to_float_price)
 
-# 4) numeric column for histogram
-hist_col = choose_column("Enter the numeric column for histogram: ", cols)
+# Optional: drop rows where price could not be parsed
+df_renamed = df_renamed.dropna(subset=['P'])
 
-# 5) first feature for scatter plot
-scatter_x = choose_column("Enter the first feature for scatter plot: ", cols)
-# 6) second feature for scatter plot
-scatter_y = choose_column("Enter the second feature for scatter plot: ", cols)
+# 4) Plotting helpers
+sns.set(style="whitegrid")
 
-# Safety: build plots only with valid combos
-def safe_barplot(cat_col, val_col):
-    if cat_col is None or val_col is None:
-        print("Bar plot skipped due to missing columns.")
-        return
-    if cat_col not in df.columns or val_col not in df.columns:
-        print("Bar plot skipped due to invalid columns.")
-        return
-    plt.figure(figsize=(6,4))
-    sns.barplot(x=cat_col, y=val_col, data=df)
-    plt.title(f"Bar plot: {val_col} by {cat_col}")
+def plot_bar():
+    plt.figure(figsize=(10,6))
+    sns.barplot(x='T', y='P', data=df_renamed)
+    plt.title('Bar Plot: Price by Title')
+    plt.xlabel('Title (T)')
+    plt.ylabel('Price (P)')
+    plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     plt.show()
 
-def safe_hist(col):
-    if col is None or col not in df.columns:
-        print("Histogram skipped due to invalid column.")
-        return
-    plt.figure(figsize=(6,4))
-    sns.histplot(df[col], kde=True)
-    plt.title(f"Histogram of {col}")
+def plot_line():
+    # Simple line plot over index (since no explicit time column)
+    plt.figure(figsize=(10,6))
+    plt.plot(df_renamed.index, df_renamed['P'], marker='o')
+    plt.title('Line Plot: Price over Index')
+    plt.xlabel('Index')
+    plt.ylabel('Price (P)')
     plt.tight_layout()
     plt.show()
 
-def safe_scatter(xcol, ycol):
-    if xcol is None or ycol is None:
-        print("Scatter plot skipped due to missing columns.")
-        return
-    if xcol not in df.columns or ycol not in df.columns:
-        print("Scatter plot skipped due to invalid columns.")
-        return
-    plt.figure(figsize=(6,4))
-    sns.scatterplot(x=xcol, y=ycol, data=df)
-    plt.title(f"Scatter: {xcol} vs {ycol}")
+def plot_hist():
+    plt.figure(figsize=(8,5))
+    sns.histplot(df_renamed['P'], bins=20, kde=True)
+    plt.title('Histogram of Price (P)')
+    plt.xlabel('Price (P)')
+    plt.ylabel('Frequency')
     plt.tight_layout()
     plt.show()
 
-def safe_line(xcol, ycol):
-    if xcol is None or ycol is None:
-        print("Line plot skipped due to missing columns.")
-        return
-    if xcol not in df.columns or ycol not in df.columns:
-        print("Line plot skipped due to invalid columns.")
-        return
-    plt.figure(figsize=(6,4))
-    sns.lineplot(x=xcol, y=ycol, data=df)
-    plt.title(f"Line plot: {ycol} over {xcol}")
+def plot_scatter():
+    # Encode Availability to numeric for scatter if needed
+    # Simple mapping: In stock -> 1, Out of stock -> 0 (or as per your data)
+    avail_unique = df_renamed['A'].unique()
+    mapping = {val: i for i, val in enumerate(avail_unique)}
+    df_scatter = df_renamed.copy()
+    df_scatter['A_num'] = df_scatter['A'].map(mapping)
+
+    plt.figure(figsize=(8,6))
+    sns.scatterplot(x='T', y='P', hue='A', data=df_scatter, palette='viridis')
+    plt.title('Scatter: Price (P) vs Title (T) colored by Availability (A)')
+    plt.xlabel('Title (T)')
+    plt.ylabel('Price (P)')
+    plt.xticks(rotation=45, ha='right')
     plt.tight_layout()
     plt.show()
 
-# Generate plots
-safe_barplot(cat_col, num_col)
-safe_line(time_col, line_y_col)
-safe_hist(hist_col)
-safe_scatter(scatter_x, scatter_y)
+# 5) Run plots (uncomment as needed)
+plot_bar()
+plot_line()
+plot_hist()
+plot_scatter()
 
-print("Plotting complete.")
+print("Plots generated. If you need adjustments (e.g., a real time column or different mappings), tell me.")
